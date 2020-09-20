@@ -4,8 +4,8 @@ import { easeOutQuad, easeInOutQuad, easeOutSine, easeInOutSine } from './utils/
 
 export default class MouseCanvas {
     constructor() {
-        this.maxAge = 120;
-        this.radius = 30;
+        this.maxAge = 60;
+        this.radius = 100;
         this.trail = [];
 
 
@@ -41,7 +41,8 @@ export default class MouseCanvas {
 
 
         this.trail.forEach((point, i) => {
-            this.drawTouch(point);
+            this.updatePoint(point);
+            this.drawPoint(point);
         });
 
         this.texture.needsUpdate = true;
@@ -49,25 +50,42 @@ export default class MouseCanvas {
     }
 
     clear() {
+        // return;
         this.ctx.fillStyle = 'black';
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     }
 
-    addTouch(point) {
+
+
+    addTouch(mouse, prevMouse) {
         let force = 0;
         const last = this.trail[this.trail.length - 1];
 
         if (last) {
-            const dx = last.x - point.x;
-            const dy = last.y - point.y;
+            const dx = last.x - mouse.x;
+            const dy = last.y - mouse.y;
             const dd = dx * dx + dy * dy;
             force = Math.min(dd * 10000, 1);
         }
 
-        this.trail.push({ x: point.x, y: point.y, age: 0, force });
+        let dirVec = {
+            x: mouse.x - prevMouse.x,
+            y: mouse.y - prevMouse.y
+        };
+
+
+        this.trail.push({ x: mouse.x, y: mouse.y, age: 0, force, dirVec });
     }
 
-    drawTouch(point) {
+    updatePoint(point) {
+        point.x += point.dirVec.x;
+        point.y += point.dirVec.y;
+
+        point.dirVec.x *= 0.95;
+        point.dirVec.y *= 0.95;
+    }
+
+    drawPoint(point) {
         const pos = {
             x: point.x,
             y: point.y

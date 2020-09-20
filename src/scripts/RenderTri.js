@@ -6,12 +6,13 @@ import fullScreenTriFrag from './../shaders/fullScreenTri.frag';
 import fullScreenTriVert from './../shaders/fullScreenTri.vert';
 
 export default class RenderTri {
-  constructor(scene, renderer, bgRenderTarget, mouseCanvas, textCanvas) {
+  constructor(scene, renderer, bgRenderTarget, mouseCanvas, textCanvas, normMouse) {
     this.scene = scene;
     this.renderer = renderer;
     this.bgRenderTarget = bgRenderTarget;
     this.mouseCanvas = mouseCanvas;
     this.textCanvas = textCanvas;
+    this.normMouse = normMouse;
 
     const resolution = new THREE.Vector2();
     this.renderer.getDrawingBufferSize(resolution);
@@ -45,7 +46,14 @@ export default class RenderTri {
         uResolution: { value: resolution },
         uTime: {
           value: 0.0
-        }
+        },
+        sky: {
+          value: new THREE.TextureLoader().load('./env.png')
+        },
+        normMouse: {
+          value: this.normMouse
+        },
+        clickHold: { value: 0.0 }
       }
     });
 

@@ -14,6 +14,7 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { BloomPass } from 'three/examples/jsm/postprocessing/BloomPass.js';
 import { FilmPass } from 'three/examples/jsm/postprocessing/FilmPass.js';
 import { debounce } from '../utils/debounce';
+import { BufferGeometryUtils } from 'three/examples/jsm/utils/BufferGeometryUtils';
 
 export default class WebGLView {
   constructor(app) {
@@ -30,9 +31,9 @@ export default class WebGLView {
     this.initBgScene();
     this.initLights();
     this.initTweakPane();
+    this.initMouseMoveListen();
     await this.loadTestMesh();
     this.setupTextCanvas();
-    this.initMouseMoveListen();
     this.initMouseCanvas();
     this.initRenderTri();
     this.initPostProcessing();
@@ -100,6 +101,7 @@ export default class WebGLView {
   }
 
   initTweakPane() {
+    return;
     this.pane = new Tweakpane();
 
     this.pane
@@ -116,14 +118,51 @@ export default class WebGLView {
 
   initMouseMoveListen() {
     this.mouse = new THREE.Vector2();
+    this.normMouse = new THREE.Vector2();
     this.width = window.innerWidth;
     this.height = window.innerHeight;
 
+
+    window.addEventListener('mousedown', () => {
+      console.log(this.renderTri)
+      TweenMax.to(this.renderTri.triMaterial.uniforms.clickHold, 3.0, {
+        value: 1
+      });
+    });
+
+    window.addEventListener('mouseup', () => {
+      TweenMax.to(this.renderTri.triMaterial.uniforms.clickHold, 1.0, {
+        value: 0
+      });
+    });
+
     window.addEventListener('mousemove', ({ clientX, clientY }) => {
+      let prevMouse = {
+        x: this.mouse.x,
+        y: this.mouse.y
+      };
+
       this.mouse.x = clientX; //(clientX / this.width) * 2 - 1;
       this.mouse.y = clientY; //-(clientY / this.height) * 2 + 1;
+      // this.normMouse.x = (clientX / this.width) * 2 - 1;
+      // this.normMouse.y = -(clientY / this.height) * 2 + 1;
 
-      this.mouseCanvas.addTouch(this.mouse);
+      TweenMax.to(this.normMouse, 0.5, {
+        x: (clientX / this.width) * 2 - 1,
+        y: -(clientY / this.height) * 2 + 1,
+        ease: 'power4.easeOut'
+      })
+
+      if (this.mouseCanvas)
+        this.mouseCanvas.addTouch(this.mouse, prevMouse);
+
+      // if (this.testMesh) {
+      //   TweenMax.to(this.testMesh.rotation, 0.5, {
+      //     z: '+=' + this.normMouse.x * 0.1,
+      //     x: '+=' + this.normMouse.y * 0.1,
+      //     ease: 'power4.easeOut'
+      //   })
+      // }
     });
   }
 
@@ -146,10 +185,11 @@ export default class WebGLView {
     return new Promise((res, rej) => {
       let loader = new GLTFLoader();
 
-      loader.load('./bbali.glb', object => {
+      loader.load('./skull.glb', object => {
         this.testMesh = object.scene.children[0];
+        this.testMesh = this.testMesh.children[0];
         console.log(this.testMesh);
-        this.testMesh.add(new THREE.AxesHelper());
+        // this.testMesh.add(new THREE.AxesHelper());
 
         this.testMeshMaterial = new THREE.ShaderMaterial({
           fragmentShader: glslify(baseDiffuseFrag),
@@ -163,12 +203,29 @@ export default class WebGLView {
             },
             u_lightPos: {
               value: new THREE.Vector3(-2.2, 2.0, 2.0)
+            },
+            sky: {
+              value: new THREE.TextureLoader().load('./env.png')
+            },
+            u_mouse: {
+              value: this.normMouse
             }
           }
         });
 
         this.testMesh.material = this.testMeshMaterial;
         this.testMesh.material.needsUpdate = true;
+        this.testMesh.position.z = 2.2;
+        this.testMesh.rotation.z = Math.PI * 0.7;
+
+        // BufferGeometryUtils.mergeVertices(this.testMesh.geometry, 0.000001);
+        // this.testMesh.geometry.computeVertexNormals();
+        // this.testMesh.geometry.needsUpdate = true;
+        // debugger;
+
+        // this.testMesh.scale.set(0.01, 0.01, 0.01);
+        // this.testMesh.position.y = -15;
+        // this.testMesh.positison.z = -30;
 
         this.bgScene.add(this.testMesh);
         res();
@@ -184,7 +241,8 @@ export default class WebGLView {
       this.renderer,
       this.bgRenderTarget,
       this.mouseCanvas,
-      this.textCanvas
+      this.textCanvas,
+      this.normMouse
     );
   }
 
@@ -199,10 +257,10 @@ export default class WebGLView {
       0.01,
       100
     );
-    this.controls = new OrbitControls(this.bgCamera, this.renderer.domElement);
+    // this.controls = new OrbitControls(this.bgCamera, this.renderer.domElement);
 
     this.bgCamera.position.z = 3;
-    this.controls.update();
+    // this.controls.update();
 
     this.bgScene = new THREE.Scene();
   }
@@ -230,7 +288,9 @@ export default class WebGLView {
   }
 
   updateTestMesh(time) {
-    this.testMesh.rotation.y += this.PARAMS.rotSpeed;
+    // this.testMesh.rotation.z += this.PARAMS.rotSpeed;
+    this.testMesh.rotation.z = this.normMouse.x + Math.PI * 0.5;
+    this.testMesh.rotation.x = this.normMouse.y + Math.PI * -0.5;
 
     this.testMeshMaterial.uniforms.u_time.value = time;
   }
@@ -245,7 +305,7 @@ export default class WebGLView {
     const delta = this.clock.getDelta();
     const time = performance.now() * 0.0005;
 
-    this.controls.update();
+    // this.controls.update();
 
     if (this.renderTri) {
       this.renderTri.triMaterial.uniforms.uTime.value = time;
